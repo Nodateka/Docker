@@ -1,60 +1,31 @@
 #!/bin/bash
 
-# Функция для установки или обновления Docker
-install_or_update_docker() {
-  if ! command -v docker &> /dev/null; then
-    echo "Docker не найден. Устанавливаю Docker..."
-    sudo apt update
-    sudo apt install -y docker.io
-    sudo systemctl start docker
-    sudo systemctl enable docker
-    echo "Docker успешно установлен."
-  else
-    echo "Docker уже установлен. Проверка обновлений..."
-    sudo apt update
-    sudo apt install --only-upgrade -y docker.io
-    echo "Docker обновлен до последней доступной версии."
-  fi
-}
+# Обновляем пакеты и устанавливаем зависимости
+sudo apt update && sudo apt install -y \
+  ca-certificates \
+  curl \
+  gnupg \
+  lsb-release
 
-# Функция для установки или обновления Docker Compose
-install_or_update_docker_compose() {
-  if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
-    echo "Docker Compose не найден. Устанавливаю Docker Compose..."
-    
-    # Загрузка последней версии Docker Compose
-    sudo curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep -Po '"tag_name": "\K[^"]*')/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-    
-    # Делаем скачанный файл исполняемым
-    sudo chmod +x /usr/local/bin/docker-compose
-    
-    # Проверка установки
-    if command -v docker-compose &> /dev/null; then
-      echo "Docker Compose успешно установлен."
-    else
-      echo "Не удалось установить Docker Compose."
-    fi
-  else
-    echo "Docker Compose уже установлен."
-  fi
-}
+# Добавляем GPG-ключ для Docker
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
 
-# Функция для проверки и включения Docker демона
-check_docker_daemon() {
-  if ! sudo systemctl is-active --quiet docker; then
-    echo "Docker демон отключен. Включаю Docker..."
-    sudo systemctl start docker
-    echo "Docker демон успешно запущен."
-  else
-    echo "Docker демон уже запущен."
-  fi
-}
+# Добавляем Docker репозиторий
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-# Проверка и установка/обновление Docker
-install_or_update_docker
+# Обновляем информацию о пакетах и устанавливаем Docker
+sudo apt update && sudo apt install -y \
+  docker-ce \
+  docker-ce-cli \
+  containerd.io \
+  docker-compose-plugin
 
-# Проверка и установка/обновление Docker Compose
-install_or_update_docker_compose
+# Добавляем пользователя в группу docker для работы без sudo
+sudo usermod -aG docker $USER
 
-# Проверка состояния демона Docker
-check_docker_daemon
+# Применяем изменения для текущей сессии
+newgrp docker
+
+# Проверка установки Docker и Docker Compose
+docker --version
+docker compose version
