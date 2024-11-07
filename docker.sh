@@ -19,16 +19,23 @@ install_or_update_docker() {
 
 # Функция для установки или обновления Docker Compose
 install_or_update_docker_compose() {
-  if ! command -v docker-compose &> /dev/null; then
+  if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
     echo "Docker Compose не найден. Устанавливаю Docker Compose..."
-    sudo apt-get update
-    sudo apt-get install -y docker-compose-plugin
-    echo "Docker Compose успешно установлен."
+    
+    # Загрузка последней версии Docker Compose
+    sudo curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep -Po '"tag_name": "\K[^"]*')/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    
+    # Делаем скачанный файл исполняемым
+    sudo chmod +x /usr/local/bin/docker-compose
+    
+    # Проверка установки
+    if command -v docker-compose &> /dev/null; then
+      echo "Docker Compose успешно установлен."
+    else
+      echo "Не удалось установить Docker Compose."
+    fi
   else
-    echo "Docker Compose уже установлен. Проверка обновлений..."
-    sudo apt-get update
-    sudo apt-get install --only-upgrade -y docker-compose-plugin
-    echo "Docker Compose обновлен до последней доступной версии."
+    echo "Docker Compose уже установлен."
   fi
 }
 
